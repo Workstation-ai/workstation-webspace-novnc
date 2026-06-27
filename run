@@ -137,9 +137,11 @@ Mod4 u :UnminimizeAll
 KEYS
 
 # --- Systemd services or direct mode ---
+TUNNEL_LOG=""
 if [ "$USE_SYSTEMD" = true ]; then
   echo "[7/7] Installing services..."
   sudo mkdir -p /var/log/bux
+  TUNNEL_LOG="/var/log/bux/novnc-tunnel.log"
   sudo cp "$SCRIPT_DIR/scripts/services/"*.service /etc/systemd/system/
 
   # Update Xvfb resolution
@@ -151,6 +153,9 @@ if [ "$USE_SYSTEMD" = true ]; then
   done
 else
   echo "[7/7] Direct mode (no systemd)..."
+  LOG_DIR="$USER_HOME/.workstation-webspace-novnc/logs"
+  mkdir -p "$LOG_DIR"
+  TUNNEL_LOG="$LOG_DIR/novnc-tunnel.log"
 fi
 
 # --- pbcopy/pbpaste ---
@@ -174,9 +179,6 @@ if [ "$USE_SYSTEMD" = true ]; then
   done
 else
   # Direct mode: run processes in background
-  LOG_DIR="$USER_HOME/.workstation-webspace-novnc/logs"
-  mkdir -p "$LOG_DIR"
-  TUNNEL_LOG="$LOG_DIR/novnc-tunnel.log"
   truncate -s 0 "$TUNNEL_LOG" 2>/dev/null || true
 
   # Kill any existing processes
