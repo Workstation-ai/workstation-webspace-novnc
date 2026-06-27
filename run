@@ -203,25 +203,31 @@ fi
 # --- Start cloudflared tunnel ---
 echo ""
 echo "Starting cloudflare tunnel..."
-cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
+echo "Tunnel log: $TUNNEL_LOG"
+cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 2>&1 | tee "$TUNNEL_LOG" &
 CF_PID=$!
 echo "cloudflared PID: $CF_PID"
 
-# Wait for URL (up to 45 seconds)
+# Wait a bit and check if it's alive
+sleep 5
+if kill -0 $CF_PID 2>/dev/null; then
+  echo "cloudflared is running after 5s"
+else
+  echo "ERROR: cloudflared died within 5 seconds!"
+fi
+
+echo ""
+echo "--- Log content so far ---"
+cat "$TUNNEL_LOG" 2>/dev/null || echo "(empty)"
+echo "--- end log ---"
+echo ""
+
+# Wait for URL (up to 30 seconds)
 echo "Waiting for tunnel URL..."
 URL=""
-for i in $(seq 1 45); do
+for i in $(seq 1 30); do
   URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | tail -1)
   if [ -n "$URL" ]; then
-    break
-  fi
-  # Check if cloudflared is still running
-  if ! kill -0 $CF_PID 2>/dev/null; then
-    echo ""
-    echo "ERROR: cloudflared process died!"
-    echo ""
-    echo "--- cloudflared output ---"
-    cat "$TUNNEL_LOG" 2>/dev/null | tail -30
     break
   fi
   printf "."
@@ -237,8 +243,10 @@ if [ -n "$URL" ]; then
 else
   echo "URL:      (not found)"
   echo ""
-  echo "--- cloudflared log ---"
+  echo "--- Final log ---"
   cat "$TUNNEL_LOG" 2>/dev/null | tail -30 || echo "(empty)"
+  echo ""
+  echo "cloudflared alive: $(kill -0 $CF_PID 2>/dev/null && echo YES || echo NO)"
 fi
 echo ""
 echo "Password: ${VNC_PASSWORD}"
