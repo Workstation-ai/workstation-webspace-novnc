@@ -40,9 +40,20 @@ Sets up a virtual desktop accessible from any browser:
 | Command | What |
 |---------|------|
 | `./run` | Install everything and start |
+| `./run --agent-preset-workspace` | Install desktop + OpenCode GentleAI agent |
 | `./stop` | Stop all services |
 | `./status` | Show status + URL |
 | `./uninstall` | Clean removal |
+
+### Agent workspace
+
+To also install the OpenCode GentleAI agent environment:
+
+```bash
+./run --agent-preset-workspace
+```
+
+This runs the [alpine-opencode-gentleai](https://github.com/reflecterlabs/alpine-opencode-gentleai) setup after the desktop is ready.
 
 ## Configuration (.env)
 
