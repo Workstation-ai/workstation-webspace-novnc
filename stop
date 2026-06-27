@@ -1,12 +1,18 @@
 #!/bin/bash
 # workstation-webspace-novnc: Stop all services
 set -euo pipefail
-if ! pidof systemd > /dev/null 2>&1; then
-  echo "Error: systemd is not running. This tool requires a real VM or server."
-  exit 1
+
+if pidof systemd > /dev/null 2>&1; then
+  echo "Stopping..."
+  for svc in bux-novnc-tunnel bux-novnc bux-x11vnc bux-fluxbox bux-xvfb; do
+    sudo systemctl stop "$svc" 2>/dev/null || true
+  done
+else
+  echo "Stopping (direct mode)..."
+  pkill -f "Xvfb :99" 2>/dev/null || true
+  pkill -f "fluxbox -display :99" 2>/dev/null || true
+  pkill -f "x11vnc -display :99" 2>/dev/null || true
+  pkill -f "websockify.*6080" 2>/dev/null || true
+  pkill -f "cloudflared.*6080" 2>/dev/null || true
 fi
-echo "Stopping..."
-for svc in bux-novnc-tunnel bux-novnc bux-x11vnc bux-fluxbox bux-xvfb; do
-  sudo systemctl stop "$svc" 2>/dev/null || true
-done
 echo "Stopped."

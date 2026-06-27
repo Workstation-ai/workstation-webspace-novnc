@@ -1,30 +1,40 @@
 #!/bin/bash
 # workstation-webspace-novnc: Uninstall cleanly
 set -euo pipefail
-if ! pidof systemd > /dev/null 2>&1; then
-  echo "Error: systemd is not running. This tool requires a real VM or server."
-  exit 1
-fi
+
 echo "=== Uninstalling ==="
 
-echo "[1/4] Stopping services..."
-for svc in bux-novnc-tunnel bux-novnc bux-x11vnc bux-fluxbox bux-xvfb; do
-  sudo systemctl stop "$svc" 2>/dev/null || true
-  sudo systemctl disable "$svc" 2>/dev/null || true
-done
+# Stop services
+if pidof systemd > /dev/null 2>&1; then
+  echo "[1/4] Stopping services..."
+  for svc in bux-novnc-tunnel bux-novnc bux-x11vnc bux-fluxbox bux-xvfb; do
+    sudo systemctl stop "$svc" 2>/dev/null || true
+    sudo systemctl disable "$svc" 2>/dev/null || true
+  done
 
-echo "[2/4] Removing services..."
-sudo rm -f /etc/systemd/system/bux-{xvfb,fluxbox,apps,x11vnc,novnc,novnc-tunnel}.service
-sudo systemctl daemon-reload
+  echo "[2/4] Removing services..."
+  sudo rm -f /etc/systemd/system/bux-{xvfb,fluxbox,apps,x11vnc,novnc,novnc-tunnel}.service
+  sudo systemctl daemon-reload
+else
+  echo "[1/4] Stopping processes..."
+  pkill -f "Xvfb :99" 2>/dev/null || true
+  pkill -f "fluxbox -display :99" 2>/dev/null || true
+  pkill -f "x11vnc -display :99" 2>/dev/null || true
+  pkill -f "websockify.*6080" 2>/dev/null || true
+  pkill -f "cloudflared.*6080" 2>/dev/null || true
+
+  echo "[2/4] Removing services..."
+  sudo rm -f /etc/systemd/system/bux-{xvfb,fluxbox,apps,x11vnc,novnc,novnc-tunnel}.service 2>/dev/null || true
+fi
 
 echo "[3/4] Removing files..."
 sudo rm -rf /opt/noVNC /opt/firefox /usr/local/bin/firefox
-rm -rf /home/bux/.fluxbox /home/bux/.vnc /home/bux/.mozilla
-rm -rf /home/bux/.config/mozilla /home/bux/.config/xfce4
+rm -rf "$HOME/.fluxbox" "$HOME/.vnc" "$HOME/.mozilla"
+rm -rf "$HOME/.config/mozilla" "$HOME/.config/xfce4"
 rm -rf /var/log/bux/novnc-tunnel.log
 
 echo "[4/4] Cleaning .bashrc..."
-sed -i '/Linux version of OSX pbcopy/,/pbpaste/d' /home/bux/.bashrc 2>/dev/null || true
+sed -i '/Linux version of OSX pbcopy/,/pbpaste/d' "$HOME/.bashrc" 2>/dev/null || true
 
 echo ""
 echo "Done. Packages (x11vnc, fluxbox, etc.) were not removed."

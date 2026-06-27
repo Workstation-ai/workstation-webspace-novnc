@@ -31,13 +31,10 @@ RES_Y="${RESOLUTION#*x}"
 NOVNC_DIR="/opt/noVNC"
 
 # --- Check for systemd ---
+USE_SYSTEMD=true
 if ! pidof systemd > /dev/null 2>&1; then
-  echo "Error: systemd is not running."
-  echo ""
-  echo "This tool requires a real VM or server, not a container."
-  echo "Works on: bare metal, VPS (AWS, GCP, Azure), VMs."
-  echo "Does not work: Docker, Codespaces, Podman, LXC."
-  exit 1
+  echo "Note: systemd not detected. Running in direct mode (no auto-restart)."
+  USE_SYSTEMD=false
 fi
 
 echo "=== workstation-webspace-novnc ==="
@@ -131,18 +128,22 @@ cat >> "$USER_HOME/.fluxbox/keys" << 'KEYS'
 Mod4 u :UnminimizeAll
 KEYS
 
-# --- Systemd services ---
-echo "[6/6] Installing services..."
-sudo mkdir -p /var/log/bux
-sudo cp "$SCRIPT_DIR/scripts/services/"*.service /etc/systemd/system/
+# --- Systemd services or direct mode ---
+if [ "$USE_SYSTEMD" = true ]; then
+  echo "[6/6] Installing services..."
+  sudo mkdir -p /var/log/bux
+  sudo cp "$SCRIPT_DIR/scripts/services/"*.service /etc/systemd/system/
 
-# Update Xvfb resolution
-sudo sed -i "s/-screen 0 [0-9]*x[0-9]*x[0-9]*/-screen 0 ${RES_X}x${RES_Y}x${DEPTH}/" /etc/systemd/system/bux-xvfb.service
-sudo systemctl daemon-reload
+  # Update Xvfb resolution
+  sudo sed -i "s/-screen 0 [0-9]*x[0-9]*x[0-9]*/-screen 0 ${RES_X}x${RES_Y}x${DEPTH}/" /etc/systemd/system/bux-xvfb.service
+  sudo systemctl daemon-reload
 
-for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
-  sudo systemctl enable "$svc" 2>/dev/null
-done
+  for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
+    sudo systemctl enable "$svc" 2>/dev/null
+  done
+else
+  echo "[6/6] Direct mode (no systemd)..."
+fi
 
 # --- pbcopy/pbpaste ---
 if ! grep -q "pbcopy" "$USER_HOME/.bashrc" 2>/dev/null; then
@@ -157,10 +158,37 @@ fi
 # --- Start ---
 echo ""
 echo "Starting services..."
-sudo truncate -s 0 /var/log/bux/novnc-tunnel.log 2>/dev/null || true
-for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
-  sudo systemctl start "$svc" 2>/dev/null || true
-done
+
+if [ "$USE_SYSTEMD" = true ]; then
+  sudo truncate -s 0 /var/log/bux/novnc-tunnel.log 2>/dev/null || true
+  for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
+    sudo systemctl start "$svc" 2>/dev/null || true
+  done
+else
+  # Direct mode: run processes in background
+  mkdir -p /var/log/bux
+  truncate -s 0 /var/log/bux/novnc-tunnel.log 2>/dev/null || true
+
+  # Kill any existing processes
+  pkill -f "Xvfb :99" 2>/dev/null || true
+  pkill -f "fluxbox -display :99" 2>/dev/null || true
+  pkill -f "x11vnc -display :99" 2>/dev/null || true
+  pkill -f "websockify.*6080" 2>/dev/null || true
+  pkill -f "cloudflared.*6080" 2>/dev/null || true
+  sleep 1
+
+  # Start processes
+  Xvfb :99 -screen 0 "${RES_X}x${RES_Y}x${DEPTH}" -ac &
+  sleep 1
+  DISPLAY=:99 fluxbox &
+  sleep 1
+  DISPLAY=:99 x11vnc -display :99 -forever -shared -rfbauth "$USER_HOME/.vnc/passwd" -rfbport 5900 -noxdamage -noxrecord -noxfixes &
+  sleep 1
+  WEBSOCKIFY=$(which websockify 2>/dev/null || echo "$USER_HOME/.local/bin/websockify")
+  "$WEBSOCKIFY" --web "$NOVNC_DIR" 6080 localhost:5900 &
+  sleep 1
+  /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > /var/log/bux/novnc-tunnel.log 2>&1 &
+fi
 
 sleep 10
 URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)

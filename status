@@ -1,14 +1,20 @@
 #!/bin/bash
 # workstation-webspace-novnc: Show status
-if ! pidof systemd > /dev/null 2>&1; then
-  echo "Error: systemd is not running. This tool requires a real VM or server."
-  exit 1
-fi
 echo "=== workstation-webspace-novnc ==="
-for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
-  status=$(systemctl is-active "$svc" 2>/dev/null || echo "unknown")
-  printf "  %-25s %s\n" "$svc" "$status"
-done
+
+if pidof systemd > /dev/null 2>&1; then
+  for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
+    status=$(systemctl is-active "$svc" 2>/dev/null || echo "unknown")
+    printf "  %-25s %s\n" "$svc" "$status"
+  done
+else
+  echo "  Xvfb:              $(pgrep -f 'Xvfb :99' > /dev/null && echo 'running' || echo 'stopped')"
+  echo "  fluxbox:           $(pgrep -f 'fluxbox -display :99' > /dev/null && echo 'running' || echo 'stopped')"
+  echo "  x11vnc:            $(pgrep -f 'x11vnc -display :99' > /dev/null && echo 'running' || echo 'stopped')"
+  echo "  websockify:        $(pgrep -f 'websockify.*6080' > /dev/null && echo 'running' || echo 'stopped')"
+  echo "  cloudflared:       $(pgrep -f 'cloudflared.*6080' > /dev/null && echo 'running' || echo 'stopped')"
+fi
+
 echo ""
 URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
 echo "URL: ${URL:-N/A}"
