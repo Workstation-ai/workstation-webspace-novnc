@@ -1,0 +1,161 @@
+#!/bin/bash
+# workstation-webspace-novnc: One-command setup
+# Usage: ./run
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# --- Load .env ---
+if [ ! -f "$SCRIPT_DIR/.env" ]; then
+  echo "Error: .env file not found."
+  echo "Copy .env.example to .env and configure it:"
+  echo "  cp .env.example .env"
+  echo "  nano .env"
+  exit 1
+fi
+
+source "$SCRIPT_DIR/.env"
+
+if [ -z "${VNC_PASSWORD:-}" ]; then
+  echo "Error: VNC_PASSWORD is not set in .env"
+  exit 1
+fi
+
+RESOLUTION="${SCREEN_RESOLUTION:-1920x1080}"
+DEPTH="${COLOR_DEPTH:-24}"
+RES_X="${RESOLUTION%x*}"
+RES_Y="${RESOLUTION#*x}"
+
+NOVNC_DIR="/opt/noVNC"
+
+echo "=== workstation-webspace-novnc ==="
+echo "Resolution: ${RESOLUTION}x${DEPTH}bit"
+echo ""
+
+# --- Packages ---
+echo "[1/6] Installing packages..."
+sudo apt-get update -qq
+sudo apt-get install -y -qq x11vnc fluxbox xfce4-terminal xdg-utils xsel dbus-x11 xdotool wmctrl 2>&1 | tail -3
+pip3 install --break-system-packages websockify 2>&1 | tail -2
+
+# --- noVNC ---
+if [ ! -d "$NOVNC_DIR" ]; then
+  echo "[2/6] Cloning noVNC..."
+  sudo git clone --depth 1 https://github.com/novnc/noVNC.git "$NOVNC_DIR"
+else
+  echo "[2/6] noVNC already installed, skipping"
+fi
+
+# --- Firefox (non-snap) ---
+if [ ! -x /opt/firefox/firefox ]; then
+  echo "[3/6] Installing Firefox..."
+  curl -sL "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" -o /tmp/firefox.tar.bz2
+  cd /opt && sudo tar xJf /tmp/firefox.tar.bz2
+  sudo ln -sf /opt/firefox/firefox /usr/local/bin/firefox
+else
+  echo "[3/6] Firefox already installed, skipping"
+fi
+
+sudo ln -sf "$NOVNC_DIR/vnc.html" "$NOVNC_DIR/index.html"
+
+# --- VNC Password ---
+echo "[4/6] Setting VNC password..."
+mkdir -p /home/bux/.vnc
+x11vnc -storepasswd "$VNC_PASSWORD" /home/bux/.vnc/passwd 2>&1 | tail -1
+
+# --- Fluxbox ---
+echo "[5/6] Configuring desktop..."
+mkdir -p /home/bux/.fluxbox
+
+cat > /home/bux/.fluxbox/menu << 'MENU'
+[begin] (bux Desktop)
+	[submenu] (Applications)
+		[exec] (Terminal) {xfce4-terminal} <>
+		[exec] (Firefox) {/opt/firefox/firefox} <>
+		[exec] (Text Editor) {xfce4-terminal -e nano} <>
+	[end]
+	[submenu] (System)
+		[exec] (htop) {xfce4-terminal -e htop} <>
+		[exec] (Disk Usage) {xfce4-terminal -e "df -h"} <>
+		[exec] (Process List) {xfce4-terminal -e "ps aux"} <>
+	[end]
+	[submenu] (Network)
+		[exec] (IP Info) {xfce4-terminal -e "curl -s ifconfig.me && echo && ip addr show"} <>
+	[end]
+	[separator]
+	[restart] (Restart) <>
+	[exit] (Exit) <>
+end
+MENU
+
+cat > /home/bux/.fluxbox/init << EOF
+! Toolbar
+session.screen0.toolbar.visible: true
+session.screen0.toolbar.widthPercent: 100
+session.screen0.toolbar.maintainSize: true
+session.screen0.toolbar.height: 32
+session.screen0.toolbar.tools: prevworkspace, workspacename, nextworkspace, clock, prevwindow, nextwindow, iconbar, systemtray
+
+! Iconbar
+session.screen0.iconbar.mode: {static groups} (workspace=[current])
+
+! Window placement
+session.screen0.windowPlacement: UnderMouse
+session.screen0.maxIgnorePositionBar: true
+
+! Menu
+session.screen0.menuFile: ~/.fluxbox/menu
+
+! Workspace
+session.screen0.workspaceCount: 1
+EOF
+
+# Keys with unminimize shortcut
+cp /etc/X11/fluxbox/keys /home/bux/.fluxbox/keys 2>/dev/null || true
+cat >> /home/bux/.fluxbox/keys << 'KEYS'
+
+# unminimize all windows
+Mod4 u :UnminimizeAll
+KEYS
+
+# --- Systemd services ---
+echo "[6/6] Installing services..."
+sudo mkdir -p /var/log/bux
+sudo cp "$SCRIPT_DIR/scripts/services/"*.service /etc/systemd/system/
+
+# Update Xvfb resolution
+sudo sed -i "s/-screen 0 [0-9]*x[0-9]*x[0-9]*/-screen 0 ${RES_X}x${RES_Y}x${DEPTH}/" /etc/systemd/system/bux-xvfb.service
+sudo systemctl daemon-reload
+
+for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
+  sudo systemctl enable "$svc" 2>/dev/null
+done
+
+# --- pbcopy/pbpaste ---
+if ! grep -q "pbcopy" /home/bux/.bashrc 2>/dev/null; then
+  cat >> /home/bux/.bashrc << 'EOF'
+
+# Linux version of OSX pbcopy and pbpaste.
+alias pbcopy='xsel --clipboard --input'
+alias pbpaste='xsel --clipboard --output'
+EOF
+fi
+
+# --- Start ---
+echo ""
+echo "Starting services..."
+sudo truncate -s 0 /var/log/bux/novnc-tunnel.log 2>/dev/null || true
+for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
+  sudo systemctl start "$svc" 2>/dev/null || true
+done
+
+sleep 10
+URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+
+echo ""
+echo "=== Ready ==="
+echo ""
+echo "URL:      ${URL:-pending...}"
+echo "Password: ${VNC_PASSWORD}"
+echo ""
+echo "Open the URL in your browser and enter the password."

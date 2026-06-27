@@ -1,0 +1,16 @@
+[Unit]
+Description=x11vnc VNC Server
+After=bux-xvfb.service
+Requires=bux-xvfb.service
+
+[Service]
+Type=simple
+User=bux
+Group=bux
+ExecStart=/usr/bin/x11vnc -display :99 -forever -shared -rfbauth /home/bux/.vnc/passwd -rfbport 5900 -noxdamage -noxrecord -noxfixes
+Restart=always
+RestartSec=3
+Environment=DISPLAY=:99
+
+[Install]
+WantedBy=multi-user.target

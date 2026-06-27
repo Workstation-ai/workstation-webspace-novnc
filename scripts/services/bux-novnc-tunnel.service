@@ -1,0 +1,17 @@
+[Unit]
+Description=noVNC Cloudflare Tunnel
+After=bux-novnc.service
+Requires=bux-novnc.service
+
+[Service]
+Type=simple
+User=bux
+Group=bux
+ExecStart=/usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/bux/novnc-tunnel.log
+StandardError=append:/var/log/bux/novnc-tunnel.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Fluxbox Window Manager
+After=bux-xvfb.service
+Requires=bux-xvfb.service
+
+[Service]
+Type=simple
+User=bux
+Group=bux
+ExecStart=/usr/bin/fluxbox -display :99
+Restart=always
+RestartSec=3
+Environment=DISPLAY=:99
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+#!/bin/bash
+# workstation-webspace-novnc: Show status
+echo "=== workstation-webspace-novnc ==="
+for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
+  status=$(systemctl is-active "$svc" 2>/dev/null || echo "unknown")
+  printf "  %-25s %s\n" "$svc" "$status"
+done
+echo ""
+URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+echo "URL: ${URL:-N/A}"
+
+# Show password from .env if available
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  source "$SCRIPT_DIR/.env"
+  echo "Password: ${VNC_PASSWORD:-not set}"
+else
+  echo "Password: (no .env file)"
+fi

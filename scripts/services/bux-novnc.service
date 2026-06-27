@@ -1,0 +1,15 @@
+[Unit]
+Description=noVNC WebSocket Proxy
+After=bux-x11vnc.service
+Requires=bux-x11vnc.service
+
+[Service]
+Type=simple
+User=bux
+Group=bux
+ExecStart=/home/bux/.local/bin/websockify --web /opt/noVNC 6080 localhost:5900
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
