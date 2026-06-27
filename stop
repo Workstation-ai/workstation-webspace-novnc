@@ -1,6 +1,10 @@
 #!/bin/bash
 # workstation-webspace-novnc: Stop all services
 set -euo pipefail
+if ! pidof systemd > /dev/null 2>&1; then
+  echo "Error: systemd is not running. This tool requires a real VM or server."
+  exit 1
+fi
 echo "Stopping..."
 for svc in bux-novnc-tunnel bux-novnc bux-x11vnc bux-fluxbox bux-xvfb; do
   sudo systemctl stop "$svc" 2>/dev/null || true

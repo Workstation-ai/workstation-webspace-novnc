@@ -30,6 +30,16 @@ RES_Y="${RESOLUTION#*x}"
 
 NOVNC_DIR="/opt/noVNC"
 
+# --- Check for systemd ---
+if ! pidof systemd > /dev/null 2>&1; then
+  echo "Error: systemd is not running."
+  echo ""
+  echo "This tool requires a real VM or server, not a container."
+  echo "Works on: bare metal, VPS (AWS, GCP, Azure), VMs."
+  echo "Does not work: Docker, Codespaces, Podman, LXC."
+  exit 1
+fi
+
 echo "=== workstation-webspace-novnc ==="
 echo "Resolution: ${RESOLUTION}x${DEPTH}bit"
 echo "User: ${USER_NAME}"

@@ -2,6 +2,8 @@
 
 Remote desktop in your browser. For developers who need a quick GUI on a headless server.
 
+**Requires:** Linux VM or server with systemd (AWS, GCP, Azure, bare metal). Does not work in containers (Docker, Codespaces).
+
 ## Quick start
 
 ```bash

@@ -1,6 +1,10 @@
 #!/bin/bash
 # workstation-webspace-novnc: Uninstall cleanly
 set -euo pipefail
+if ! pidof systemd > /dev/null 2>&1; then
+  echo "Error: systemd is not running. This tool requires a real VM or server."
+  exit 1
+fi
 echo "=== Uninstalling ==="
 
 echo "[1/4] Stopping services..."
