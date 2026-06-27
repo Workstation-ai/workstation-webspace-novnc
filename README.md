@@ -8,9 +8,11 @@ Remote desktop in your browser. For developers who need a quick GUI on a headles
 git clone https://github.com/Workstation-ai/workstation-webspace-novnc.git
 cd workstation-webspace-novnc
 cp .env.example .env
-nano .env          # set your password
-./run              # done
+nano .env
+./run
 ```
+
+Edit `.env` and set your `VNC_PASSWORD`, then run `./run`.
 
 That's it. You get a URL and password.
 
