@@ -45,15 +45,19 @@ Sets up a virtual desktop accessible from any browser:
 | `./status` | Show status + URL |
 | `./uninstall` | Clean removal |
 
-### Agent workspace
+### Agent workspace (with OpenCode GentleAI)
 
-To also install the OpenCode GentleAI agent environment:
+Clone and run with agent support:
 
 ```bash
+git clone -b v2-agent-environment https://github.com/Workstation-ai/workstation-webspace-novnc.git
+cd workstation-webspace-novnc
+cp .env.example .env
+nano .env
 ./run --agent-preset-workspace
 ```
 
-This runs the [alpine-opencode-gentleai](https://github.com/reflecterlabs/alpine-opencode-gentleai) setup after the desktop is ready.
+This installs the desktop + [OpenCode GentleAI](https://github.com/reflecterlabs/alpine-opencode-gentleai) agent environment.
 
 ## Configuration (.env)
 
