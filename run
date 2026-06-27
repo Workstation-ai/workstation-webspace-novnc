@@ -196,6 +196,27 @@ fi
 echo ""
 echo "Waiting for cloudflare tunnel..."
 URL=""
+CF_PID=$(pgrep -f "cloudflared.*6080" 2>/dev/null || true)
+if [ -z "$CF_PID" ]; then
+  echo "ERROR: cloudflared is not running!"
+  echo "Trying to start it manually..."
+  if [ "$USE_SYSTEMD" = true ]; then
+    /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > /var/log/bux/novnc-tunnel.log 2>&1 &
+  else
+    /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
+  fi
+  sleep 3
+  CF_PID=$(pgrep -f "cloudflared.*6080" 2>/dev/null || true)
+  if [ -z "$CF_PID" ]; then
+    echo "ERROR: cloudflared failed to start!"
+    echo "Checking if cloudflared is installed..."
+    which cloudflared 2>/dev/null || echo "cloudflared not found in PATH"
+    ls -la /usr/local/bin/cloudflared 2>/dev/null || echo "/usr/local/bin/cloudflared not found"
+  else
+    echo "cloudflared started (PID: $CF_PID)"
+  fi
+fi
+
 for i in $(seq 1 30); do
   if [ "$USE_SYSTEMD" = true ]; then
     URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
@@ -205,8 +226,10 @@ for i in $(seq 1 30); do
   if [ -n "$URL" ]; then
     break
   fi
+  printf "."
   sleep 1
 done
+echo ""
 
 echo ""
 echo "=== Ready ==="
