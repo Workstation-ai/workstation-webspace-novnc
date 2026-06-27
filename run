@@ -200,40 +200,28 @@ else
   /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
 fi
 
-# Wait for cloudflare URL (up to 30 seconds)
+# --- Start cloudflared tunnel ---
 echo ""
-echo "Waiting for cloudflare tunnel..."
+echo "Starting cloudflare tunnel..."
+cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
+CF_PID=$!
+echo "cloudflared PID: $CF_PID"
+
+# Wait for URL (up to 45 seconds)
+echo "Waiting for tunnel URL..."
 URL=""
-
-# Check if cloudflared is running
-CF_PID=$(pgrep -f "cloudflared.*6080" 2>/dev/null || true)
-if [ -z "$CF_PID" ]; then
-  echo "WARNING: cloudflared is not running. Attempting to start..."
-  # Try starting cloudflared
-  /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
-  sleep 5
-  CF_PID=$(pgrep -f "cloudflared.*6080" 2>/dev/null || true)
-  if [ -z "$CF_PID" ]; then
-    echo "ERROR: cloudflared failed to start!"
-    echo ""
-    echo "--- Debug Info ---"
-    echo "cloudflared path: $(which cloudflared 2>/dev/null || echo 'not found')"
-    echo "File exists: $(ls -la /usr/local/bin/cloudflared 2>/dev/null || echo 'no')"
-    echo ""
-    echo "Attempting to run cloudflared manually to see error..."
-    timeout 5 /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 2>&1 || true
-    echo ""
-    echo "--- Log file content ---"
-    cat "$TUNNEL_LOG" 2>/dev/null || echo "(empty)"
-  else
-    echo "cloudflared started successfully (PID: $CF_PID)"
-  fi
-fi
-
-# Wait for URL
-for i in $(seq 1 30); do
+for i in $(seq 1 45); do
   URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | tail -1)
   if [ -n "$URL" ]; then
+    break
+  fi
+  # Check if cloudflared is still running
+  if ! kill -0 $CF_PID 2>/dev/null; then
+    echo ""
+    echo "ERROR: cloudflared process died!"
+    echo ""
+    echo "--- cloudflared output ---"
+    cat "$TUNNEL_LOG" 2>/dev/null | tail -30
     break
   fi
   printf "."
@@ -247,13 +235,10 @@ echo ""
 if [ -n "$URL" ]; then
   echo "URL:      $URL"
 else
-  echo "URL:      (not found after 30s)"
+  echo "URL:      (not found)"
   echo ""
-  echo "--- Final Debug ---"
-  echo "cloudflared running: $(pgrep -f 'cloudflared.*6080' > /dev/null && echo 'YES' || echo 'NO')"
-  echo ""
-  echo "--- Log file ($TUNNEL_LOG) ---"
-  cat "$TUNNEL_LOG" 2>/dev/null | tail -20 || echo "(empty or missing)"
+  echo "--- cloudflared log ---"
+  cat "$TUNNEL_LOG" 2>/dev/null | tail -30 || echo "(empty)"
 fi
 echo ""
 echo "Password: ${VNC_PASSWORD}"
