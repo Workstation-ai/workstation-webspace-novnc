@@ -166,8 +166,10 @@ if [ "$USE_SYSTEMD" = true ]; then
   done
 else
   # Direct mode: run processes in background
-  mkdir -p /var/log/bux
-  truncate -s 0 /var/log/bux/novnc-tunnel.log 2>/dev/null || true
+  LOG_DIR="$USER_HOME/.workstation-webspace-novnc/logs"
+  mkdir -p "$LOG_DIR"
+  TUNNEL_LOG="$LOG_DIR/novnc-tunnel.log"
+  truncate -s 0 "$TUNNEL_LOG" 2>/dev/null || true
 
   # Kill any existing processes
   pkill -f "Xvfb :99" 2>/dev/null || true
@@ -187,11 +189,15 @@ else
   WEBSOCKIFY=$(which websockify 2>/dev/null || echo "$USER_HOME/.local/bin/websockify")
   "$WEBSOCKIFY" --web "$NOVNC_DIR" 6080 localhost:5900 &
   sleep 1
-  /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > /var/log/bux/novnc-tunnel.log 2>&1 &
+  /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
 fi
 
 sleep 10
-URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+if [ "$USE_SYSTEMD" = true ]; then
+  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+else
+  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$LOG_DIR/novnc-tunnel.log" 2>/dev/null | tail -1)
+fi
 
 echo ""
 echo "=== Ready ==="

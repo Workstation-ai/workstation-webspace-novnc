@@ -16,7 +16,12 @@ else
 fi
 
 echo ""
-URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+if pidof systemd > /dev/null 2>&1; then
+  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+else
+  USER_HOME="$HOME"
+  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$USER_HOME/.workstation-webspace-novnc/logs/novnc-tunnel.log" 2>/dev/null | tail -1)
+fi
 echo "URL: ${URL:-N/A}"
 
 # Show password from .env if available

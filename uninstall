@@ -31,7 +31,8 @@ echo "[3/4] Removing files..."
 sudo rm -rf /opt/noVNC /opt/firefox /usr/local/bin/firefox
 rm -rf "$HOME/.fluxbox" "$HOME/.vnc" "$HOME/.mozilla"
 rm -rf "$HOME/.config/mozilla" "$HOME/.config/xfce4"
-rm -rf /var/log/bux/novnc-tunnel.log
+rm -rf "$HOME/.workstation-webspace-novnc"
+sudo rm -rf /var/log/bux/novnc-tunnel.log 2>/dev/null || true
 
 echo "[4/4] Cleaning .bashrc..."
 sed -i '/Linux version of OSX pbcopy/,/pbpaste/d' "$HOME/.bashrc" 2>/dev/null || true
