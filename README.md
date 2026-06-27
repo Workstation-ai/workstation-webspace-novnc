@@ -5,6 +5,8 @@ Remote desktop in your browser. For developers who need a quick GUI on a headles
 ## Quick start
 
 ```bash
+git clone https://github.com/Workstation-ai/workstation-webspace-novnc.git
+cd workstation-webspace-novnc
 cp .env.example .env
 nano .env          # set your password
 ./run              # done
@@ -40,9 +42,10 @@ COLOR_DEPTH=24               # optional
 ## Usage on a new machine
 
 ```bash
-git clone <repo> && cd workstation-webspace-novnc
+git clone https://github.com/Workstation-ai/workstation-webspace-novnc.git
+cd workstation-webspace-novnc
 cp .env.example .env
-# edit .env with your password
+nano .env          # set your password
 ./run
 ```
 
