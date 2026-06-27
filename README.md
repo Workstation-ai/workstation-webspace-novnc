@@ -8,7 +8,7 @@ Remote desktop in your browser. For developers who need a quick GUI on a headles
 ## Quick start
 
 ```bash
-git clone https://github.com/Workstation-ai/workstation-webspace-novnc.git
+git clone -b v2-agent-environment https://github.com/Workstation-ai/workstation-webspace-novnc.git
 cd workstation-webspace-novnc
 cp .env.example .env
 ```
@@ -66,7 +66,7 @@ COLOR_DEPTH=24               # optional
 ## Usage on a new machine
 
 ```bash
-git clone https://github.com/Workstation-ai/workstation-webspace-novnc.git
+git clone -b v2-agent-environment https://github.com/Workstation-ai/workstation-webspace-novnc.git
 cd workstation-webspace-novnc
 cp .env.example .env
 nano .env
