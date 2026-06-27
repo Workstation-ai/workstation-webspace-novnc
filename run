@@ -196,59 +196,48 @@ else
   sleep 1
   WEBSOCKIFY=$(which websockify 2>/dev/null || echo "$USER_HOME/.local/bin/websockify")
   "$WEBSOCKIFY" --web "$NOVNC_DIR" 6080 localhost:5900 > /dev/null 2>&1 &
-  sleep 1
-  /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
 fi
 
-# --- Start cloudflared tunnel ---
-echo ""
-echo "Starting cloudflare tunnel..."
-echo "Tunnel log: $TUNNEL_LOG"
-cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 2>&1 | tee "$TUNNEL_LOG" &
-CF_PID=$!
-echo "cloudflared PID: $CF_PID"
+sleep 2
 
-# Wait a bit and check if it's alive
-sleep 5
-if kill -0 $CF_PID 2>/dev/null; then
-  echo "cloudflared is running after 5s"
-else
-  echo "ERROR: cloudflared died within 5 seconds!"
+# --- Try cloudflared (optional - for environments without port forwarding) ---
+CF_URL=""
+if command -v cloudflared &> /dev/null; then
+  echo ""
+  echo "Attempting cloudflare tunnel..."
+  truncate -s 0 "$TUNNEL_LOG" 2>/dev/null || true
+  cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
+  CF_PID=$!
+  
+  # Wait up to 15 seconds for URL
+  for i in $(seq 1 15); do
+    CF_URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | tail -1)
+    if [ -n "$CF_URL" ]; then
+      break
+    fi
+    if ! kill -0 $CF_PID 2>/dev/null; then
+      echo "cloudflared process exited - using local port forwarding instead"
+      break
+    fi
+    sleep 1
+  done
 fi
 
-echo ""
-echo "--- Log content so far ---"
-cat "$TUNNEL_LOG" 2>/dev/null || echo "(empty)"
-echo "--- end log ---"
-echo ""
-
-# Wait for URL (up to 30 seconds)
-echo "Waiting for tunnel URL..."
-URL=""
-for i in $(seq 1 30); do
-  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | tail -1)
-  if [ -n "$URL" ]; then
-    break
-  fi
-  printf "."
-  sleep 1
-done
-echo ""
-
+# --- Print access info ---
 echo ""
 echo "=== Ready ==="
 echo ""
-if [ -n "$URL" ]; then
-  echo "URL:      $URL"
-else
-  echo "URL:      (not found)"
+if [ -n "$CF_URL" ]; then
+  echo "Cloudflare URL: $CF_URL"
   echo ""
-  echo "--- Final log ---"
-  cat "$TUNNEL_LOG" 2>/dev/null | tail -30 || echo "(empty)"
-  echo ""
-  echo "cloudflared alive: $(kill -0 $CF_PID 2>/dev/null && echo YES || echo NO)"
+  echo "Or use direct access:"
 fi
+echo "Local URL:  http://localhost:6080"
+echo "VNC direct: vnc://localhost:5900"
 echo ""
-echo "Password: ${VNC_PASSWORD}"
+echo "Password:   ${VNC_PASSWORD}"
 echo ""
-echo "Open the URL in your browser and enter the password."
+echo "--- How to access ---"
+echo "1. In Codespaces: click the 'Ports' tab, find port 6080, click the globe icon"
+echo "2. Or open: http://localhost:6080 in your browser"
+echo "3. Enter the password when prompted"
