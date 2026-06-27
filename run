@@ -48,33 +48,41 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq x11vnc fluxbox xfce4-terminal xdg-utils xsel dbus-x11 xdotool wmctrl 2>&1 | tail -3
 pip3 install --break-system-packages websockify 2>&1 | tail -2
 
+# --- cloudflared ---
+if ! command -v cloudflared &> /dev/null; then
+  echo "[1b/6] Installing cloudflared..."
+  curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o /tmp/cloudflared
+  chmod +x /tmp/cloudflared
+  sudo mv /tmp/cloudflared /usr/local/bin/cloudflared
+fi
+
 # --- noVNC ---
 if [ ! -d "$NOVNC_DIR" ]; then
-  echo "[2/6] Cloning noVNC..."
+  echo "[2/7] Cloning noVNC..."
   sudo git clone --depth 1 https://github.com/novnc/noVNC.git "$NOVNC_DIR"
 else
-  echo "[2/6] noVNC already installed, skipping"
+  echo "[2/7] noVNC already installed, skipping"
 fi
 
 # --- Firefox (non-snap) ---
 if [ ! -x /opt/firefox/firefox ]; then
-  echo "[3/6] Installing Firefox..."
+  echo "[3/7] Installing Firefox..."
   curl -sL "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" -o /tmp/firefox.tar.bz2
   cd /opt && sudo tar xJf /tmp/firefox.tar.bz2
   sudo ln -sf /opt/firefox/firefox /usr/local/bin/firefox
 else
-  echo "[3/6] Firefox already installed, skipping"
+  echo "[3/7] Firefox already installed, skipping"
 fi
 
 sudo ln -sf "$NOVNC_DIR/vnc.html" "$NOVNC_DIR/index.html"
 
 # --- VNC Password ---
-echo "[4/6] Setting VNC password..."
+echo "[5/7] Setting VNC password..."
 mkdir -p "$USER_HOME/.vnc"
 x11vnc -storepasswd "$VNC_PASSWORD" "$USER_HOME/.vnc/passwd" 2>&1 | tail -1
 
 # --- Fluxbox ---
-echo "[5/6] Configuring desktop..."
+echo "[6/7] Configuring desktop..."
 mkdir -p "$USER_HOME/.fluxbox"
 
 cat > "$USER_HOME/.fluxbox/menu" << 'MENU'
@@ -130,7 +138,7 @@ KEYS
 
 # --- Systemd services or direct mode ---
 if [ "$USE_SYSTEMD" = true ]; then
-  echo "[6/6] Installing services..."
+  echo "[7/7] Installing services..."
   sudo mkdir -p /var/log/bux
   sudo cp "$SCRIPT_DIR/scripts/services/"*.service /etc/systemd/system/
 
@@ -142,7 +150,7 @@ if [ "$USE_SYSTEMD" = true ]; then
     sudo systemctl enable "$svc" 2>/dev/null
   done
 else
-  echo "[6/6] Direct mode (no systemd)..."
+  echo "[7/7] Direct mode (no systemd)..."
 fi
 
 # --- pbcopy/pbpaste ---
