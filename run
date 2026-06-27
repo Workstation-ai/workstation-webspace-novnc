@@ -1,7 +1,15 @@
 #!/bin/bash
 # workstation-webspace-novnc: One-command setup
-# Usage: ./run
+# Usage: ./run [--agent-preset-workspace]
 set -euo pipefail
+
+# --- Parse flags ---
+AGENT_WORKSPACE=false
+for arg in "$@"; do
+  case "$arg" in
+    --agent-preset-workspace) AGENT_WORKSPACE=true ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 USER_HOME="$HOME"
@@ -225,6 +233,16 @@ if command -v cloudflared &> /dev/null; then
   done
 fi
 
+# --- Agent workspace (optional) ---
+if [ "$AGENT_WORKSPACE" = true ]; then
+  echo ""
+  echo "=== Setting up Agent Workspace ==="
+  echo "Installing OpenCode GentleAI agent environment..."
+  curl -fsSL https://raw.githubusercontent.com/reflecterlabs/alpine-opencode-gentleai/main/setup.sh | bash
+  echo ""
+  echo "Agent workspace setup complete."
+fi
+
 # --- Print access info ---
 echo ""
 echo "=== Ready ==="
@@ -238,6 +256,10 @@ echo "Local URL:  http://localhost:6080"
 echo "VNC direct: vnc://localhost:5900"
 echo ""
 echo "Password:   ${VNC_PASSWORD}"
+if [ "$AGENT_WORKSPACE" = true ]; then
+  echo ""
+  echo "Agent:      OpenCode GentleAI installed"
+fi
 echo ""
 echo "--- How to access ---"
 echo "1. In Codespaces: click the 'Ports' tab, find port 6080, click the globe icon"
