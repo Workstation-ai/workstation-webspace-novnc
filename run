@@ -4,6 +4,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+USER_HOME="$HOME"
+USER_NAME="$(whoami)"
 
 # --- Load .env ---
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
@@ -30,6 +32,7 @@ NOVNC_DIR="/opt/noVNC"
 
 echo "=== workstation-webspace-novnc ==="
 echo "Resolution: ${RESOLUTION}x${DEPTH}bit"
+echo "User: ${USER_NAME}"
 echo ""
 
 # --- Packages ---
@@ -60,15 +63,15 @@ sudo ln -sf "$NOVNC_DIR/vnc.html" "$NOVNC_DIR/index.html"
 
 # --- VNC Password ---
 echo "[4/6] Setting VNC password..."
-mkdir -p /home/bux/.vnc
-x11vnc -storepasswd "$VNC_PASSWORD" /home/bux/.vnc/passwd 2>&1 | tail -1
+mkdir -p "$USER_HOME/.vnc"
+x11vnc -storepasswd "$VNC_PASSWORD" "$USER_HOME/.vnc/passwd" 2>&1 | tail -1
 
 # --- Fluxbox ---
 echo "[5/6] Configuring desktop..."
-mkdir -p /home/bux/.fluxbox
+mkdir -p "$USER_HOME/.fluxbox"
 
-cat > /home/bux/.fluxbox/menu << 'MENU'
-[begin] (bux Desktop)
+cat > "$USER_HOME/.fluxbox/menu" << 'MENU'
+[begin] (Desktop)
 	[submenu] (Applications)
 		[exec] (Terminal) {xfce4-terminal} <>
 		[exec] (Firefox) {/opt/firefox/firefox} <>
@@ -88,7 +91,7 @@ cat > /home/bux/.fluxbox/menu << 'MENU'
 end
 MENU
 
-cat > /home/bux/.fluxbox/init << EOF
+cat > "$USER_HOME/.fluxbox/init" << EOF
 ! Toolbar
 session.screen0.toolbar.visible: true
 session.screen0.toolbar.widthPercent: 100
@@ -111,8 +114,8 @@ session.screen0.workspaceCount: 1
 EOF
 
 # Keys with unminimize shortcut
-cp /etc/X11/fluxbox/keys /home/bux/.fluxbox/keys 2>/dev/null || true
-cat >> /home/bux/.fluxbox/keys << 'KEYS'
+cp /etc/X11/fluxbox/keys "$USER_HOME/.fluxbox/keys" 2>/dev/null || true
+cat >> "$USER_HOME/.fluxbox/keys" << 'KEYS'
 
 # unminimize all windows
 Mod4 u :UnminimizeAll
@@ -132,8 +135,8 @@ for svc in bux-xvfb bux-fluxbox bux-x11vnc bux-novnc bux-novnc-tunnel; do
 done
 
 # --- pbcopy/pbpaste ---
-if ! grep -q "pbcopy" /home/bux/.bashrc 2>/dev/null; then
-  cat >> /home/bux/.bashrc << 'EOF'
+if ! grep -q "pbcopy" "$USER_HOME/.bashrc" 2>/dev/null; then
+  cat >> "$USER_HOME/.bashrc" << 'EOF'
 
 # Linux version of OSX pbcopy and pbpaste.
 alias pbcopy='xsel --clipboard --input'
