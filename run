@@ -187,17 +187,26 @@ else
   DISPLAY=:99 x11vnc -display :99 -forever -shared -rfbauth "$USER_HOME/.vnc/passwd" -rfbport 5900 -noxdamage -noxrecord -noxfixes &
   sleep 1
   WEBSOCKIFY=$(which websockify 2>/dev/null || echo "$USER_HOME/.local/bin/websockify")
-  "$WEBSOCKIFY" --web "$NOVNC_DIR" 6080 localhost:5900 &
+  "$WEBSOCKIFY" --web "$NOVNC_DIR" 6080 localhost:5900 > /dev/null 2>&1 &
   sleep 1
   /usr/local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
 fi
 
-sleep 10
-if [ "$USE_SYSTEMD" = true ]; then
-  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
-else
-  URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$LOG_DIR/novnc-tunnel.log" 2>/dev/null | tail -1)
-fi
+# Wait for cloudflare URL (up to 30 seconds)
+echo ""
+echo "Waiting for cloudflare tunnel..."
+URL=""
+for i in $(seq 1 30); do
+  if [ "$USE_SYSTEMD" = true ]; then
+    URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' /var/log/bux/novnc-tunnel.log 2>/dev/null | tail -1)
+  else
+    URL=$(grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' "$LOG_DIR/novnc-tunnel.log" 2>/dev/null | tail -1)
+  fi
+  if [ -n "$URL" ]; then
+    break
+  fi
+  sleep 1
+done
 
 echo ""
 echo "=== Ready ==="
