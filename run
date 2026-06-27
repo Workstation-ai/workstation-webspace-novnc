@@ -211,7 +211,24 @@ done
 echo ""
 echo "=== Ready ==="
 echo ""
-echo "URL:      ${URL:-pending...}"
+if [ -n "$URL" ]; then
+  echo "URL:      $URL"
+else
+  echo "URL:      (not found - showing debug info)"
+  echo ""
+  echo "--- Debug ---"
+  if [ "$USE_SYSTEMD" = true ]; then
+    echo "Log file: /var/log/bux/novnc-tunnel.log"
+    cat /var/log/bux/novnc-tunnel.log 2>/dev/null || echo "(empty or missing)"
+  else
+    echo "Log file: $LOG_DIR/novnc-tunnel.log"
+    cat "$LOG_DIR/novnc-tunnel.log" 2>/dev/null || echo "(empty or missing)"
+  fi
+  echo ""
+  echo "cloudflared process: $(pgrep -f 'cloudflared.*6080' > /dev/null && echo 'running' || echo 'NOT running')"
+  echo "which cloudflared: $(which cloudflared 2>/dev/null || echo 'not found')"
+fi
+echo ""
 echo "Password: ${VNC_PASSWORD}"
 echo ""
 echo "Open the URL in your browser and enter the password."
