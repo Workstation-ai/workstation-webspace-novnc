@@ -216,7 +216,7 @@ if command -v cloudflared &> /dev/null; then
   echo ""
   echo "Attempting cloudflare tunnel..."
   truncate -s 0 "$TUNNEL_LOG" 2>/dev/null || true
-  cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
+  nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > "$TUNNEL_LOG" 2>&1 &
   CF_PID=$!
   
   # Wait up to 15 seconds for URL
